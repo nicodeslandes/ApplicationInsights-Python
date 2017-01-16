@@ -1,4 +1,5 @@
 import json
+import logging
 
 try:
     # Python 2.x
@@ -16,7 +17,7 @@ class SenderBase(object):
     listen to these notifications and will pull items from the queue getting at most :func:`send_buffer_size` items.
     It will then call :func:`send` using the list of items pulled from the queue.
     """
-    def __init__(self, service_endpoint_uri):
+    def __init__(self, service_endpoint_uri, send_timeout=None):
         """Initializes a new instance of the class.
 
         Args:
@@ -112,13 +113,15 @@ class SenderBase(object):
             data_to_send (Array): an array of :class:`contracts.Envelope` objects to send to the service.
         """
         request_payload = json.dumps([ a.write() for a in data_to_send ])
-
         request = HTTPClient.Request(self._service_endpoint_uri, bytearray(request_payload, 'utf-8'), { 'Accept': 'application/json', 'Content-Type' : 'application/json; charset=utf-8' })
         try:
             response = HTTPClient.urlopen(request)
             status_code = response.getcode()
+            logging.debug("Response: %d - %s" % (status_code, response.read()))
             if 200 <= status_code < 300:
                 return
+            logging.warn("Error status code received from server: %d" % status_code)
+            logging.info("Response: %s" % response.read())
         except HTTPError as e:
             if e.getcode() == 400:
                 return
