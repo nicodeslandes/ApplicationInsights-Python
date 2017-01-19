@@ -115,19 +115,22 @@ class SenderBase(object):
         request_payload = json.dumps([ a.write() for a in data_to_send ])
         request = HTTPClient.Request(self._service_endpoint_uri, bytearray(request_payload, 'utf-8'), { 'Accept': 'application/json', 'Content-Type' : 'application/json; charset=utf-8' })
         try:
+            logging.debug("Sending request to %s - payload length: %d bytes", self._service_endpoint_uri, len(request_payload))
             response = HTTPClient.urlopen(request)
             status_code = response.getcode()
-            logging.debug("Response: %d - %s" % (status_code, response.read()))
+            logging.debug("Response: %d - %s", status_code, response.read())
             if 200 <= status_code < 300:
                 return
-            logging.warn("Error status code received from server: %d" % status_code)
-            logging.info("Response: %s" % response.read())
+            logging.warn("Error status code received from server: %d", status_code)
+            logging.info("Response: %s", response.read())
         except HTTPError as e:
+            logging.info("HTTP Exception caught: %s", e)
             if e.getcode() == 400:
                 return
         except Exception as e:
-            pass
+            logging.info("Unknown Exception caught: %s", e)
 
         # Add our unsent data back on to the queue
+        logging.debug("Putting back %d requests to the send queue", len(data_to_send))
         for data in data_to_send:
             self._queue.put(data)
